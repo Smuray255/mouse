@@ -315,24 +315,39 @@ pub fn setup() {
             "KERNEL32.dll",
             "IsDebuggerPresent",
             hook_is_debugger_present as _,
-        )
-        .unwrap();
+        ) {
+            Ok(ptr) => ptr,
+            Err(err) => {
+                warn!("failed to hook IsDebuggerPresent: {}", err);
+                return;
+            }
+        };
 
         ORIG_CREATE_FILE = hook_import_any(
             &target_modules,
             "KERNEL32.dll",
             "CreateFileW",
             hook_create_file as _,
-        )
-        .unwrap();
+        ) {
+            Ok(ptr) => ptr,
+            Err(err) => {
+                warn!("failed to hook CreateFileW: {}", err);
+                return;
+            }
+        };
 
         ORIG_READ_FILE = hook_import_any(
             &target_modules,
             "KERNEL32.dll",
             "ReadFile",
             hook_read_file as _,
-        )
-        .unwrap();
+        ) {
+            Ok(ptr) => ptr,
+            Err(err) => {
+                warn!("failed to hook ReadFile: {}", err);
+                return;
+            }
+        };
     }
 
     info!("hooking kernel32.dll!WriteFile");
@@ -342,7 +357,12 @@ pub fn setup() {
             "KERNEL32.dll",
             "WriteFile",
             hook_write_file as _,
-        )
-        .unwrap();
+        ) {
+            Ok(ptr) => ptr,
+            Err(err) => {
+                warn!("failed to hook WriteFile: {}", err);
+                return;
+            }
+        };
     }
 }
