@@ -24,11 +24,18 @@ lazy_static! {
 }
 
 pub fn hijack_wndproc() -> Result<(), &'static str> {
-    let window_name =
-        CString::new("PS Remote Play").map_err(|_| "unable to convert window_name")?;
-    let h_wnd = unsafe { FindWindowA(std::ptr::null(), window_name.as_ptr()) };
+    // Try known window captions for both PS Remote Play and Chiaki variants.
+    let mut h_wnd = std::ptr::null_mut();
+    for window_name in ["PS Remote Play", "Chiaki", "chiaki-ng"] {
+        let window_name_c =
+            CString::new(window_name).map_err(|_| "unable to convert window_name")?;
+        h_wnd = unsafe { FindWindowA(std::ptr::null(), window_name_c.as_ptr()) };
+        if !h_wnd.is_null() {
+            break;
+        }
+    }
     if h_wnd.is_null() {
-        return Err("window not found");
+        return Err("window not found for known window names");
     }
 
     let orig_wndproc = unsafe { GetWindowLongPtrA(h_wnd, GWL_WNDPROC) } as *const c_void;
