@@ -308,10 +308,9 @@ pub fn setup() {
     // RpCtrlWrapper.dll", "KERNEL32.dll", "ReadFile"
     // RpCtrlWrapper.dll", "KERNEL32.dll", "WriteFile"
 
-    // Chiaki-ng builds its desktop binary as `chiaki` (Windows: chiaki.exe).
-    let target_modules = ["RpCtrlWrapper.dll", "chiaki.exe"];
+    let target_modules = ["RpCtrlWrapper.dll", "chiaki-ng.exe", "chiaki.exe"];
     unsafe {
-        ORIG_IS_DEBUGGER_PRESENT = match hook_import_any(
+        ORIG_IS_DEBUGGER_PRESENT = hook_import_any(
             &target_modules,
             "KERNEL32.dll",
             "IsDebuggerPresent",
@@ -324,7 +323,7 @@ pub fn setup() {
             }
         };
 
-        ORIG_CREATE_FILE = match hook_import_any(
+        ORIG_CREATE_FILE = hook_import_any(
             &target_modules,
             "KERNEL32.dll",
             "CreateFileW",
@@ -337,7 +336,7 @@ pub fn setup() {
             }
         };
 
-        ORIG_READ_FILE = match hook_import_any(
+        ORIG_READ_FILE = hook_import_any(
             &target_modules,
             "KERNEL32.dll",
             "ReadFile",
@@ -353,7 +352,7 @@ pub fn setup() {
 
     info!("hooking kernel32.dll!WriteFile");
     unsafe {
-        ORIG_WRITE_FILE = match hook_import_any(
+        ORIG_WRITE_FILE = hook_import_any(
             &target_modules,
             "KERNEL32.dll",
             "WriteFile",
