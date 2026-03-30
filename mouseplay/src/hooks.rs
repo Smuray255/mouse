@@ -4,7 +4,7 @@ use std::ffi::OsString;
 use std::ffi::{c_void, CStr, CString};
 use std::mem::size_of;
 
-use log::info;
+use log::{info, warn};
 
 use libc::strcmp;
 use winapi::{
@@ -120,6 +120,25 @@ unsafe fn hook_import(
     Err("import module not found")
 }
 
+unsafe fn hook_import_any(
+    target_modules: &[&str],
+    import_module: &str,
+    import_name: &str,
+    hook_func: *mut c_void,
+) -> Result<*mut c_void, &'static str> {
+    for target_module in target_modules {
+        if let Ok(orig) = hook_import(target_module, import_module, import_name, hook_func) {
+            info!(
+                "hooked {}!{} in target module {}",
+                import_module, import_name, target_module
+            );
+            return Ok(orig);
+        }
+    }
+
+    Err("unable to hook import in any target module")
+}
+
 static mut ORIG_IS_DEBUGGER_PRESENT: *const c_void = std::ptr::null_mut();
 unsafe extern "stdcall" fn hook_is_debugger_present() -> BOOL {
     0
@@ -204,7 +223,9 @@ unsafe extern "stdcall" fn hook_read_file(
     }
 
     // hijack wndproc
-    crate::input::raw_input::hijack_wndproc().unwrap();
+    if let Err(err) = crate::input::raw_input::hijack_wndproc() {
+        warn!("unable to hijack wndproc yet: {}", err);
+    }
 
     // TODO: figure out if we are in ds4 or ds5 mode
 
@@ -287,25 +308,26 @@ pub fn setup() {
     // RpCtrlWrapper.dll", "KERNEL32.dll", "ReadFile"
     // RpCtrlWrapper.dll", "KERNEL32.dll", "WriteFile"
 
+    let target_modules = ["RpCtrlWrapper.dll", "chiaki-ng.exe", "chiaki.exe"];
     unsafe {
-        ORIG_IS_DEBUGGER_PRESENT = hook_import(
-            "RpCtrlWrapper.dll",
+        ORIG_IS_DEBUGGER_PRESENT = hook_import_any(
+            &target_modules,
             "KERNEL32.dll",
             "IsDebuggerPresent",
             hook_is_debugger_present as _,
         )
         .unwrap();
 
-        ORIG_CREATE_FILE = hook_import(
-            "RpCtrlWrapper.dll",
+        ORIG_CREATE_FILE = hook_import_any(
+            &target_modules,
             "KERNEL32.dll",
             "CreateFileW",
             hook_create_file as _,
         )
         .unwrap();
 
-        ORIG_READ_FILE = hook_import(
-            "RpCtrlWrapper.dll",
+        ORIG_READ_FILE = hook_import_any(
+            &target_modules,
             "KERNEL32.dll",
             "ReadFile",
             hook_read_file as _,
@@ -315,8 +337,8 @@ pub fn setup() {
 
     info!("hooking kernel32.dll!WriteFile");
     unsafe {
-        ORIG_WRITE_FILE = hook_import(
-            "RpCtrlWrapper.dll",
+        ORIG_WRITE_FILE = hook_import_any(
+            &target_modules,
             "KERNEL32.dll",
             "WriteFile",
             hook_write_file as _,
